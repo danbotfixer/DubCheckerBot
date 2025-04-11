@@ -1,39 +1,40 @@
-import asyncio
 import os
+import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
-from aiogram.types import Message
 from aiogram.client.default import DefaultBotProperties
-from dotenv import load_dotenv
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from dotenv import load_dotenv
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "supersecret")
+BASE_WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # например: https://your-app-name.onrender.com
+
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
+
+dp = Dispatcher(storage=MemoryStorage())
 
 @dp.message()
-async def handle_message(message: Message):
-    if message.text:
-        await message.answer("✅ Бот работает!")
+async def handle_message(message: types.Message):
+    if message.text and message.chat.type in ["channel", "supergroup"]:
+        await message.answer("Бот работает! 🟢")
 
-# HTTP-сервер для Render
-async def handle(request):
-    return web.Response(text="Bot is running.")
+async def on_startup(app: web.Application):
+    webhook_url = BASE_WEBHOOK_URL + WEBHOOK_PATH
+    await bot.set_webhook(webhook_url, secret_token=WEBHOOK_SECRET)
 
-async def start_webserver():
-    app = web.Application()
-    app.add_routes([web.get("/", handle)])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", 8080)))
-    await site.start()
-
-async def main():
-    await start_webserver()
-    await dp.start_polling(bot)
+app = web.Application()
+SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET).register(app, path=WEBHOOK_PATH)
+app.on_startup.append(on_startup)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    web.run_app(app, port=10000)  # Render требует явно указывать порт
