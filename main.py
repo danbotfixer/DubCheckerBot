@@ -23,7 +23,7 @@ dp = Dispatcher(storage=MemoryStorage())
 @dp.channel_post()
 async def check_channel_post(message: types.Message):
     await message.answer("Пост получен ✅")
-    )
+    
 
 async def on_startup(app: web.Application):
     if BASE_WEBHOOK_URL is None:
