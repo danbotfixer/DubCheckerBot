@@ -15,6 +15,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "supersecret")
 BASE_WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # например: https://your-app-name.onrender.com
+if not BASE_WEBHOOK_URL:
+    raise ValueError("WEBHOOK_URL is not set in environment variables.")
 
 bot = Bot(
     token=BOT_TOKEN,
