@@ -1,4 +1,5 @@
 import os
+import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
@@ -12,7 +13,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "supersecret")
-BASE_WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Например: https://dubcheckerbot.onrender.com
+BASE_WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # например: https://your-app-name.onrender.com
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -20,22 +21,33 @@ bot = Bot(
 )
 dp = Dispatcher(storage=MemoryStorage())
 
+# Список уже опубликованных тегов/команд
+posted_lines = set()
+
 @dp.channel_post()
-async def check_channel_post(message: types.Message):
-    await message.answer("Пост получен ✅")
-    
+async def handle_channel_post(message: types.Message):
+    if not message.text:
+        return
+
+    lines = [line.strip() for line in message.text.strip().split('\n') if line.strip()]
+    duplicates = []
+
+    for line in lines:
+        if line in posted_lines:
+            duplicates.append(line)
+        else:
+            posted_lines.add(line)
+
+    if duplicates:
+        reply_text = "⚠️ Повтор: такой тег или команда уже публиковались ранее:\n" + "\n".join(duplicates)
+        try:
+            await bot.send_message(chat_id=message.chat.id, text=reply_text, reply_to_message_id=message.message_id)
+        except Exception as e:
+            logging.error(f"Ошибка при попытке отправить комментарий: {e}")
 
 async def on_startup(app: web.Application):
-    if BASE_WEBHOOK_URL is None:
-        print("❌ WEBHOOK_URL не указан")
-        return
     webhook_url = BASE_WEBHOOK_URL + WEBHOOK_PATH
-    await bot.set_webhook(
-        webhook_url,
-        secret_token=WEBHOOK_SECRET,
-        allowed_updates=["channel_post"]
-    )
-    print("✅ Webhook установлен:", webhook_url)
+    await bot.set_webhook(webhook_url, secret_token=WEBHOOK_SECRET)
 
 app = web.Application()
 SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET).register(app, path=WEBHOOK_PATH)
