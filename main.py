@@ -26,13 +26,19 @@ bot = Bot(
 dp = Dispatcher(storage=MemoryStorage())
 
 @dp.message()
-async def handle_message(message: types.Message):
+async def handle_channel_post_(message: types.Message):
     if message.text and message.chat.type in ["channel", "supergroup"]:
         await message.answer("Бот работает! 🟢")
 
 async def on_startup(app: web.Application):
     webhook_url = BASE_WEBHOOK_URL + WEBHOOK_PATH
-    await bot.set_webhook(webhook_url, secret_token=WEBHOOK_SECRET)
+    await bot.set_webhook(
+        webhook_url,
+        secret_token=WEBHOOK_SECRET,
+        allowed_updates=["channel_post"]
+    )
+    print("✅ Webhook установлен:", webhook_url)
+
 
 app = web.Application()
 SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET).register(app, path=WEBHOOK_PATH)
