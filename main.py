@@ -21,11 +21,8 @@ bot = Bot(
 dp = Dispatcher(storage=MemoryStorage())
 
 @dp.channel_post()
-async def on_channel_post(message: types.Message):
-    print(f"📨 Получено сообщение из канала: {message.text}")
-    await bot.send_message(
-        chat_id=message.chat.id,
-        text="👀 Я получил пост!"
+async def check_channel_post(message: types.Message):
+    await message.answer("Пост получен ✅")
     )
 
 async def on_startup(app: web.Application):
